@@ -1,73 +1,54 @@
-// Get todo
+$(document).ready(function () {
+	var get_list = function () {
+		$.ajax('/list', {
+			'success': function (list) {
+				var trs = '';
 
-var fs = require('fs');	// 파일 시스템 모듈
+				list = JSON.parse(list).list;
 
-exports.list = function(req, res){	// ToDo 목록 가져오기
-	fs.exists('./todo_list.json', function (exists) {	// ToDo 목록 존재 확인
-		if(exists) {
-			fs.readFile('./todo_list.json', {
-				'encoding': 'utf8'
-			}, function (err, list) {	// todo_list.json 파일 읽기
-				res.json(list);
-			});
-		} else {
-			var list = {	// 기본 ToDo 목록 형식
-				'list': []
-			};
-				
-			fs.writeFile('./todo_list.json', JSON.stringify(list), function (err) {	// todo_list.json 파일 쓰기
-				res.json(list);
-			});
-		}
-	});
-};
+				for(var i = 0, len = list.length; i < len; i++) {	// 테이블 내용 만들기
+					trs += '<tr>' + 
+								'<td>' + (i + 1) + '</td>' + 
+								'<td class="' + (list[i].complete ? 'complete' : '') + '">' + list[i].contents + '</td>' +	// 취소선 클래스
+								'<td><button type="button" class="btn btn-success">완료</button></td>' + 
+								'<td><button type="button" class="btn btn-danger">삭제</button></td>' + 
+							'</tr>';
+				}
 
-exports.add = function(req, res){	// 새로운 ToDo 항목 추가하기
-	var todo = {	// 기본 ToDo 항목 형식
-		'contents': '',
-		'complete': false
+				$('tbody').html(trs);
+			}
+		});
 	};
 	
-	todo.contents = req.body.contents;
+	get_list();
 	
-	fs.readFile('./todo_list.json', {
-		'encoding': 'utf8'
-	}, function (err, data) {
-		data = JSON.parse(data);
-		
-		data.list.push(todo);	// 새로운 ToDo 항목 추가
-		
-		fs.writeFile('./todo_list.json', JSON.stringify(data), function (err) {
-			res.json(true);
+	$('.form-inline button').click(function () {	// 새로운 할 일 추가하기
+		$.ajax('/add', {
+			'method': 'POST',
+			'data': {
+				'contents': $('#new_todo').val()
+			},
+			'success': get_list
 		});
 	});
-};
-
-exports.complete = function(req, res){	// 선택한 ToDo 항목 완료하기
-	fs.readFile('./todo_list.json', {
-		'encoding': 'utf8'
-	}, function (err, data) {
-		data = JSON.parse(data);
-		
-		data.list[req.body.index].complete = true;
-		
-		fs.writeFile('./todo_list.json', JSON.stringify(data), function (err) {
-			res.json(true);
+	
+	$('tbody').on('click', '.btn-success', function () {	// 선택한 할 일 완료하기
+		$.ajax('/complete', {
+			'method': 'POST',
+			'data': {
+				'index': parseInt($(this).parent().siblings(':first').text()) - 1	// 선택한 행의 인덱스
+			},
+			'success': get_list
 		});
 	});
-};
-
-exports.del = function(req, res){	// 선택한 ToDo 항목 삭제하기
-	fs.readFile('./todo_list.json', {
-		'encoding': 'utf8'
-	}, function (err, data) {
-		data = JSON.parse(data);
-		
-		data.list[req.body.index] = null;	// 선택한 ToDo 항목 삭제
-		data.list = data.list.filter(Boolean);	// 유효한 값 추려내기
-		
-		fs.writeFile('./todo_list.json', JSON.stringify(data), function (err) {
-			res.json(true);
+	
+	$('tbody').on('click', '.btn-danger', function () {	// 선택한 할 일 삭제하기
+		$.ajax('/del', {
+			'method': 'POST',
+			'data': {
+				'index': parseInt($(this).parent().siblings(':first').text()) - 1	// 선택한 행의 인덱스
+			},
+			'success': get_list
 		});
 	});
-};
+});
